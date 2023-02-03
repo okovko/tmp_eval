@@ -2,23 +2,19 @@
 #include <cstddef>
 #include <limits>
 #include <type_traits>
+#include <tuple>
 
 // Type list impl
 namespace meta
 {
     template <typename T> struct wrap { using type = T; };
 
+    template<int N, typename... Ts> using nth =
+        typename std::tuple_element<N, std::tuple<Ts...>>::type;
+
     template <typename... Ts>
     class type_list
     {
-        template <size_t I = 0, size_t N, size_t C,
-            typename T, typename... Us>
-        static consteval inline auto get_at() {
-            static_assert(N < C, "Out of bounds");
-            if constexpr(I == N) return wrap<T>{};
-            else return get_at<I + 1, N, C, Us...>();
-        };
-
         template <typename U, size_t I = 0, size_t C>
         static consteval inline size_t locate_impl() {
             return std::numeric_limits<size_t>::max();
@@ -46,7 +42,8 @@ namespace meta
         template <size_t N>
         static inline consteval auto get()
         {
-            return get_at<0, N, type_list<Ts...>::count_impl, Ts...>();
+            static_assert(N < sizeof...(Ts), "Out of bounds");
+            return wrap<nth<N, Ts...>>{};
         };
 
         template <typename T>
