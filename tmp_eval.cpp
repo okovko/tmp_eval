@@ -6,17 +6,17 @@
 // Type list impl
 namespace meta
 {
-    template <typename Ty> struct Type_wrapper { using type = Ty; };
+    template <typename T> struct wrap { using type = T; };
 
-    template <typename...TT>
-    class Type_list
+    template <typename... Ts>
+    class type_list
     {
         template <size_t I = 0, size_t N, size_t C,
-            typename Ty, typename...UU>
+            typename T, typename... Us>
         static consteval inline auto get_at() {
             static_assert(N < C, "Out of bounds");
-            if constexpr(I == N) return Type_wrapper<Ty>{};
-            else return get_at<I + 1, N, C, UU...>();
+            if constexpr(I == N) return wrap<T>{};
+            else return get_at<I + 1, N, C, Us...>();
         };
 
         template <typename U, size_t I = 0, size_t C>
@@ -25,111 +25,111 @@ namespace meta
         };
 
         template <typename U, size_t I = 0, size_t C,
-            typename T, typename...UU>
+            typename T, typename... Us>
         static consteval inline size_t locate_impl() {
             if constexpr (std::same_as<U, T>) return I;
-            else return locate_impl<U, I + 1, C, UU...>();
+            else return locate_impl<U, I + 1, C, Us...>();
         };
 
-        static inline constexpr size_t count_impl = sizeof...(TT);
+        static inline constexpr size_t count_impl = sizeof...(Ts);
 
     public:
         static inline consteval size_t count()
         { return count_impl; };
 
-        template <typename...UU> struct append
-        { using type = Type_list <TT..., UU...>; };
+        template <typename... Us> struct append
+        { using type = type_list <Ts..., Us...>; };
 
-        template <typename...UU> struct prepend
-        { using type = Type_list <UU..., TT...>; };
+        template <typename... Us> struct prepend
+        { using type = type_list <Us..., Ts...>; };
 
         template <size_t N>
         static inline consteval auto get()
         {
-            return get_at<0, N, Type_list<TT...>::count_impl, TT...>();
+            return get_at<0, N, type_list<Ts...>::count_impl, Ts...>();
         };
 
-        template <typename Ty>
+        template <typename T>
         static inline consteval bool exists()
         {
-            return locate_impl<Ty, 0, Type_list<TT...>::count_impl, TT...>()
+            return locate_impl<T, 0, type_list<Ts...>::count_impl, Ts...>()
                     != std::numeric_limits<size_t>::max();
         };
 
-        template <typename Ty>
+        template <typename T>
         static inline consteval size_t locate()
         {
-            return locate_impl<Ty, 0, Type_list<TT...>::count_impl, TT...>();
+            return locate_impl<T, 0, type_list<Ts...>::count_impl, Ts...>();
         };
 
-        template <bool B, typename...UU>
+        template <bool B, typename... Us>
         struct append_if
-        { using type = Type_list <TT..., UU...>; };
+        { using type = type_list <Ts..., Us...>; };
 
-        template <typename...UU>
-        struct append_if <false, UU...>
-        { using type = Type_list <TT...>; };
+        template <typename... Us>
+        struct append_if <false, Us...>
+        { using type = type_list <Ts...>; };
     };
 
-    template <> class Type_list<>
+    template <> class type_list<>
     {
     public:
         static inline consteval size_t count() { return 0; };
 
-        template <typename Ty>
+        template <typename T>
         static inline consteval bool exists() { return false; };
 
-        template <typename Ty>
+        template <typename T>
         static inline consteval size_t locate()
         { return std::numeric_limits<size_t>::max(); };
 
-        template <typename...UU> struct append
-        { using type = Type_list <UU...>; };
+        template <typename... Us> struct append
+        { using type = type_list <Us...>; };
 
-        template <typename...UU> struct prepend
-        { using type = Type_list <UU...>; };
+        template <typename... Us> struct prepend
+        { using type = type_list <Us...>; };
 
-        template <bool B, typename...UU>
+        template <bool B, typename... Us>
         struct append_if
-        { using type = Type_list <UU...>; };
+        { using type = type_list <Us...>; };
 
-        template <typename...UU>
-        struct append_if <false, UU...>
-        { using type = Type_list <>; };
+        template <typename... Us>
+        struct append_if <false, Us...>
+        { using type = type_list <>; };
     };
 
-    template <typename List, typename T, typename...TT>
-    consteval inline auto tl_flip(meta::Type_list<T, TT...>)
+    template <typename List, typename T, typename... Ts>
+    consteval inline auto tl_flip(meta::type_list<T, Ts...>)
     {
-        return tl_flip<typename List::template prepend<T>::type>(meta::Type_list<TT...>{});
+        return tl_flip<typename List::template prepend<T>::type>(meta::type_list<Ts...>{});
     };
 
     template <typename List>
-    consteval inline auto tl_flip(meta::Type_list<>) { return List{}; };
+    consteval inline auto tl_flip(meta::type_list<>) { return List{}; };
 }
 
-template <typename...TT>
+template <typename... Ts>
 struct tl_flip
 {
-    using type = decltype(meta::tl_flip<meta::Type_list<>>(meta::Type_list<TT...>{}));
+    using type = decltype(meta::tl_flip<meta::type_list<>>(meta::type_list<Ts...>{}));
 };
 
 template <size_t N> struct Size_t
 { static inline constexpr size_t value = N; };
 
 template <typename> struct is_idxls : std::false_type {};
-template <size_t...NN>
-struct is_idxls <meta::Type_list<Size_t<NN>...>> : std::true_type {};
-template <size_t...NN>
-struct is_idxls <const meta::Type_list<Size_t<NN>...>> : std::true_type {};
-template <> struct is_idxls <meta::Type_list<>> : std::true_type {};
+template <size_t...Is>
+struct is_idxls <meta::type_list<Size_t<Is>...>> : std::true_type {};
+template <size_t...Is>
+struct is_idxls <const meta::type_list<Size_t<Is>...>> : std::true_type {};
+template <> struct is_idxls <meta::type_list<>> : std::true_type {};
 
-template <typename Ty> concept idxls_c = is_idxls<Ty>::value;
+template <typename T> concept idxls_c = is_idxls<T>::value;
 
 
 
-// Token impl
-enum Token_vs : size_t
+// token impl
+enum E_TOKEN : size_t
 {
     CONSTANT,
     VARIABLE,
@@ -138,74 +138,74 @@ enum Token_vs : size_t
     WHITESPACE
 };
 
-template <char C> struct Token
+template <char C> struct token
 {
     static inline constexpr char tok = C;
-    static inline constexpr auto T_t = Token_vs::VARIABLE;
+    static inline constexpr auto T_t = E_TOKEN::VARIABLE;
 };
 
-template <> struct Token<'\0'> {
+template <> struct token<'\0'> {
     static inline constexpr char tok = '\0';
-    static inline constexpr auto T_t = Token_vs::EOF;
+    static inline constexpr auto T_t = E_TOKEN::EOF;
 };
 
-template <> struct Token<' '> {
+template <> struct token<' '> {
     static inline constexpr char tok = ' ';
-    static inline constexpr auto T_t = Token_vs::WHITESPACE;
+    static inline constexpr auto T_t = E_TOKEN::WHITESPACE;
 };
 
-template <> struct Token<'+'>  {
+template <> struct token<'+'>  {
     static inline constexpr char tok = '+';
-    static inline constexpr auto T_t = Token_vs::OPERATOR;
+    static inline constexpr auto T_t = E_TOKEN::OPERATOR;
     static inline constexpr auto expr =
         [](double _0, double _1) { return _0 + _1; };
 };
 
-template <> struct Token<'-'> {
+template <> struct token<'-'> {
     static inline constexpr char tok = '-';
-    static inline constexpr auto T_t = Token_vs::OPERATOR;
+    static inline constexpr auto T_t = E_TOKEN::OPERATOR;
     static inline constexpr auto expr =
         [](double _0, double _1) { return _0 - _1; };
 };
 
-template <> struct Token<'*'> {
+template <> struct token<'*'> {
     static inline constexpr char tok = '*';
-    static inline constexpr auto T_t = Token_vs::OPERATOR;
+    static inline constexpr auto T_t = E_TOKEN::OPERATOR;
     static inline constexpr auto expr =
         [](double _0, double _1) { return _0 * _1; };
 };
 
-template <> struct Token<'/'> {
+template <> struct token<'/'> {
     static inline constexpr char tok = '/';
-    static inline constexpr auto T_t = Token_vs::OPERATOR;
+    static inline constexpr auto T_t = E_TOKEN::OPERATOR;
     static inline constexpr auto expr =
         [](double _0, double _1) { return _0 / _1; };
 };
 
-template <> struct Token<'%'> {
+template <> struct token<'%'> {
     static inline constexpr char tok = '%';
-    static inline constexpr auto T_t = Token_vs::OPERATOR;
+    static inline constexpr auto T_t = E_TOKEN::OPERATOR;
     static inline constexpr auto expr =
         [](double _0, double _1) { return (long)_0 % (long)_1; };
 };
 
 #include <cmath>
 
-template <> struct Token<'^'> {
+template <> struct token<'^'> {
     static inline constexpr char tok = '^';
-    static inline constexpr auto T_t = Token_vs::OPERATOR;
+    static inline constexpr auto T_t = E_TOKEN::OPERATOR;
     static inline constexpr auto expr =
         [](double _0, double _1) { return pow(_0, _1); };
 };
 
 template <typename> struct is_tokls : std::false_type {};
-template <char...TT>
-struct is_tokls <meta::Type_list<Token<TT>...>> : std::true_type {};
-template <char...TT>
-struct is_tokls <const meta::Type_list<Token<TT>...>> : std::true_type {};
-template <> struct is_tokls <meta::Type_list<>> : std::true_type {};
+template <char... Ts>
+struct is_tokls <meta::type_list<token<Ts>...>> : std::true_type {};
+template <char... Ts>
+struct is_tokls <const meta::type_list<token<Ts>...>> : std::true_type {};
+template <> struct is_tokls <meta::type_list<>> : std::true_type {};
 
-template <typename Ty> concept tokls_c = is_tokls<Ty>::value;
+template <typename T> concept tokls_c = is_tokls<T>::value;
 
 
 
@@ -213,17 +213,17 @@ template <typename Ty> concept tokls_c = is_tokls<Ty>::value;
 #define N3599
 namespace intern
 {
-  template<char... NN> struct string {
-    static constexpr char const value[ sizeof...(NN) ]{NN...};
-    using tokens = meta::Type_list<Token<NN>...>;
-    static_assert( value[ sizeof...(NN) - 1 ] == '\0', "interned string was too long, see $(...) macro" );
+  template<char... Is> struct string {
+    static constexpr char const value[ sizeof...(Is) ]{Is...};
+    using tokens = meta::type_list<token<Is>...>;
+    static_assert( value[ sizeof...(Is) - 1 ] == '\0', "interned string was too long, see $(...) macro" );
     static inline constexpr auto data() { return value; }
   };
 
   template<char... N> constexpr char const string<N...>::value[];
   template<int N> constexpr char ch ( char const(&s)[N], int i ) { return i < N ? s[i] : '\0'; }
   template<typename T> struct is_string { static const bool value = false; };
-  template<char... NN> struct is_string< string<NN...> > { static const bool value = true; };
+  template<char... Is> struct is_string< string<Is...> > { static const bool value = true; };
 }
 
 template<typename T, T... C>
@@ -234,7 +234,7 @@ template <typename String> concept string_c = intern::is_string<String>::value;
 
 
 
-// Lexer / Tokenization
+// Lexer / tokenization
 template <tokls_c Vs, tokls_c Os, idxls_c Is>
 struct Lex_dict
 {
@@ -244,11 +244,11 @@ struct Lex_dict
 
     using flip =
         Lex_dict<Vs,
-        decltype(meta::tl_flip<meta::Type_list<>>(Os{})),
-        decltype(meta::tl_flip<meta::Type_list<>>(Is{}))>;
+        decltype(meta::tl_flip<meta::type_list<>>(Os{})),
+        decltype(meta::tl_flip<meta::type_list<>>(Is{}))>;
 };
 
-using Empty_lex = Lex_dict<meta::Type_list<>, meta::Type_list<>, meta::Type_list<>>;
+using Empty_lex = Lex_dict<meta::type_list<>, meta::type_list<>, meta::type_list<>>;
 
 template <typename> struct is_lxdc : std::false_type {};
 template <tokls_c Vs, tokls_c Os, idxls_c Is>
@@ -256,77 +256,77 @@ struct is_lxdc <Lex_dict<Vs, Os, Is>> : std::true_type {};
 template <tokls_c Vs, tokls_c Os, idxls_c Is>
 struct is_lxdc <const Lex_dict<Vs, Os, Is>> : std::true_type {};
 
-template <typename Ty> concept lxdc_c = is_lxdc<Ty>::value;
+template <typename T> concept lxdc_c = is_lxdc<T>::value;
 
 
 
 // Lexer append impl
 namespace meta
 {
-    template <lxdc_c, char, size_t> struct Lex_append;
+    template <lxdc_c, char, size_t> struct lex_append;
 
-    template <lxdc_c Lex, char C> struct Lex_append <Lex, C, Token_vs::VARIABLE>
+    template <lxdc_c Lex, char C> struct lex_append <Lex, C, E_TOKEN::VARIABLE>
     {
         static inline constexpr bool do_append
-            = not (Lex::Vars::template exists<Token<C>>());
+            = not (Lex::Vars::template exists<token<C>>());
 
         static inline constexpr size_t idx_v =
             (do_append) ? Lex::Vars::count() :
-            Lex::Vars::template locate<Token<C>>();
+            Lex::Vars::template locate<token<C>>();
 
         using type = Lex_dict<
-            typename Lex::Vars::append_if<do_append, Token<C>>::type,
+            typename Lex::Vars::append_if<do_append, token<C>>::type,
             typename Lex::Ops,
             typename Lex::Idxs::append<Size_t<idx_v>>::type
         >;
     };
 
-    template <lxdc_c Lex, char C> struct Lex_append <Lex, C, Token_vs::OPERATOR>
+    template <lxdc_c Lex, char C> struct lex_append <Lex, C, E_TOKEN::OPERATOR>
     {
         using type = Lex_dict<
             typename Lex::Vars,
-            typename Lex::Ops::append<Token<C>>::type,
+            typename Lex::Ops::append<token<C>>::type,
             typename Lex::Idxs
         >;
     };
 
-    template <lxdc_c Lex, char C> struct Lex_append <Lex, C, Token_vs::WHITESPACE>
+    template <lxdc_c Lex, char C> struct lex_append <Lex, C, E_TOKEN::WHITESPACE>
     { using type = Lex; };
 
-    template <lxdc_c Lex, char C> struct Lex_append <Lex, C, Token_vs::EOF>
+    template <lxdc_c Lex, char C> struct lex_append <Lex, C, E_TOKEN::EOF>
     { using type = Lex; };
 
 }
 
-template <lxdc_c, typename> struct Lex_append;
-template <lxdc_c Lex, char C> struct Lex_append <Lex, Token<C>>
+template <lxdc_c, typename> struct lex_append;
+template <lxdc_c Lex, char C> struct lex_append <Lex, token<C>>
 {
-    using type = typename meta::Lex_append<Lex, C, Token<C>::T_t>::type;
+    using type = typename meta::lex_append<Lex, C, token<C>::T_t>::type;
 };
 
-class Tokenize
+class tokenize
 {
     template <lxdc_c Lex>
     static inline consteval auto
-        gen_tokens_impl(meta::Type_list<>)
+        gen_tokens_impl(meta::type_list<>)
     {
         return Lex{};
     };
 
     template <lxdc_c Lex, char C, char...CC>
     static inline consteval auto
-        gen_tokens_impl(meta::Type_list<Token<C>, Token<CC>...>)
+        gen_tokens_impl(meta::type_list<token<C>, token<CC>...>)
     {
         return gen_tokens_impl
-            <typename Lex_append<Lex, Token<C>>::type>
-            (meta::Type_list<Token<CC>...>{});
+            <typename lex_append<Lex, token<C>>::type>
+            (meta::type_list<token<CC>...>{});
     };
 
 public:
-    template <string_c Expr>
+    template <string_c expr>
     static consteval auto gen_tokens()
     {
-        return gen_tokens_impl<Empty_lex>(typename Expr::tokens{});
+        return gen_tokens_impl<Empty_lex>(typename expr::tokens{});
     };
 };
 
@@ -341,7 +341,7 @@ namespace meta
     struct Pointer_attributes <R(*)(Args...)>
     {
         using Ret_t = R;
-        using Arg_t = Type_list<Args...>;
+        using Arg_t = type_list<Args...>;
         static constexpr inline size_t count = sizeof...(Args);
     };
 
@@ -350,24 +350,24 @@ namespace meta
     {
         using Ret_t = R;
         using Class_t = C;
-        using Arg_t = Type_list<Args...>;
+        using Arg_t = type_list<Args...>;
         static constexpr inline size_t count = sizeof...(Args);
     };
 }
 
-template <auto Lam>
+template <auto Lambda>
 struct Lambda_wrapper
-    : meta::Pointer_attributes<decltype(&decltype(Lam)::operator ())>
+    : meta::Pointer_attributes<decltype(&decltype(Lambda)::operator ())>
 {
-    static constexpr inline auto function = Lam;
+    static constexpr inline auto function = Lambda;
 };
 
-template <auto...Lams>
+template <auto...Lambdas>
 struct Lambda_list
 {
-    using value = meta::Type_list<Lambda_wrapper<Lams>...>;
-    static constexpr inline size_t count = sizeof...(Lams);
-    static constexpr inline size_t arg_count = (Lambda_wrapper<Lams>::count + ...) - 1;
+    using value = meta::type_list<Lambda_wrapper<Lambdas>...>;
+    static constexpr inline size_t count = sizeof...(Lambdas);
+    static constexpr inline size_t arg_count = (Lambda_wrapper<Lambdas>::count + ...) - 1;
 };
 
 
@@ -384,8 +384,8 @@ namespace meta
     template <auto L, size_t _1, size_t _2>
     struct Final
     {
-        template <typename...TT>
-        constexpr static inline auto call(std::tuple<TT...>& t)
+        template <typename... Ts>
+        constexpr static inline auto call(std::tuple<Ts...>& t)
         {
             return L(std::get<_1>(t), std::get<_2>(t));
         };
@@ -393,33 +393,33 @@ namespace meta
 
     template <typename, typename> struct Expand;
 
-    template <auto L, auto...LL, size_t N, size_t...NN>
-    struct Expand <Lambda_list<L, LL...>, Type_list<Size_t<N>, Size_t<NN>...>>
+    template <auto L, auto...LL, size_t N, size_t...Is>
+    struct Expand <Lambda_list<L, LL...>, type_list<Size_t<N>, Size_t<Is>...>>
     {
-        template <typename...TT>
-        constexpr static inline auto call(std::tuple<TT...>& t)
+        template <typename... Ts>
+        constexpr static inline auto call(std::tuple<Ts...>& t)
         {
-            if constexpr(sizeof...(NN) == 1) return Final<L, NN..., N>::call(t);
+            if constexpr(sizeof...(Is) == 1) return Final<L, Is..., N>::call(t);
             else return L(
                 Expand<Lambda_list<LL...>,
-                Type_list<Size_t<NN>...>>::call(t),
+                type_list<Size_t<Is>...>>::call(t),
                 std::get<N>(t)
             );
         };
     };
 }
 
-template <char...VV, char...OO, size_t...NN>
+template <char... Vs, char... Os, size_t... Is>
 consteval inline auto
 get_as_lambda(
     Lex_dict<
-        meta::Type_list<Token<VV>...>,
-        meta::Type_list<Token<OO>...>,
-        meta::Type_list<Size_t<NN>...>>)
+        meta::type_list<token<Vs>...>,
+        meta::type_list<token<Os>...>,
+        meta::type_list<Size_t<Is>...>>)
 {
-    using lambda_pack = Lambda_list<Token<OO>::expr...>;
-    using index_pack = meta::Type_list<Size_t<NN>...>;
-    using tuple_in = std::tuple<typename meta::Unpack_as<VV, double>::type&&...>;
+    using lambda_pack = Lambda_list<token<Os>::expr...>;
+    using index_pack = meta::type_list<Size_t<Is>...>;
+    using tuple_in = std::tuple<typename meta::Unpack_as<Vs, double>::type&&...>;
 
     return [] (tuple_in t) constexpr
     {
@@ -428,41 +428,41 @@ get_as_lambda(
 };
 
 
-// Expression builder
-template <string_c Expr> struct Eval;
+// expression builder
+template <string_c expr> struct eval;
 
-template <string_c Expr>
-class Builder
+template <string_c expr>
+class builder
 {
     static consteval inline auto evaluate()
     {
-        using flipped = typename decltype(Tokenize::gen_tokens<Expr>())::flip;
+        using flipped = typename decltype(tokenize::gen_tokens<expr>())::flip;
         return get_as_lambda(flipped{});
     };
 
     static inline constexpr auto value = evaluate();
-    friend struct Eval<Expr>;
+    friend struct eval<expr>;
 };
 
 #include <string_view>
 
-template <string_c Expr>
-struct Eval
+template <string_c expr>
+struct eval
 {
 protected:
-    static inline constexpr auto expression = Builder<Expr>::value;
-    static inline constexpr std::string_view s_name = Expr::value;
+    static inline constexpr auto expression = builder<expr>::value;
+    static inline constexpr std::string_view s_name = expr::value;
 public:
-    template <typename...TT>
-    constexpr double operator()(TT&&...tt) const
+    template <typename... Ts>
+    constexpr double operator()(Ts&&...tt) const
     {
-        return expression(std::make_tuple<TT&&...>(static_cast<TT&&>(tt)...));
+        return expression(std::make_tuple<Ts&&...>(static_cast<Ts&&>(tt)...));
     };
 
-    std::string_view name() const { return Eval<Expr>::s_name; }
+    std::string_view name() const { return eval<expr>::s_name; }
 };
 
-auto e = Eval<$("a - b * c / d")>{}(1.0, 2.0, 7.0, 3.9);
+auto e = eval<$("a - b * c / d")>{}(1.0, 2.0, 7.0, 3.9);
 
 #include <iostream>
 
